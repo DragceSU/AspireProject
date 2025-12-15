@@ -36,48 +36,45 @@ flowchart LR
     M --> A
 ```
 
-### C4 Context
+### Context Diagram
 
 ```mermaid
-C4Context
-    title System Context
-    Person(admin, "Operator", "Observes dashboards, triggers scripts")
-    System_Boundary(app, "AspireProject") {
-        System_Ext(api, "WebApi.Service", "HTTP API, Swagger UI")
-        System_Ext(inv, "InvoiceMicroservice", "Publishes invoices via RabbitMQ")
-        System_Ext(pay, "PaymentMicroservice", "Consumes invoices, processes payments")
-    }
-    System_Ext(rabbit, "RabbitMQ", "Message broker (fanout exchange)")
-    admin -> api : View docs / call endpoints
-    admin -> inv : Trigger invoice generation
-    admin -> pay : Monitor logs
-    inv -> rabbit : Publish InvoiceCreated events
-    rabbit -> pay : Push events to queue
-    api -> rabbit : (future) publish/consume
+flowchart LR
+    operator([Operator])
+    subgraph AspireHost
+        api[(WebApi.Service)]
+        invoice[(InvoiceMicroservice)]
+        payment[(PaymentMicroservice)]
+    end
+    bus[[RabbitMQ<br/>invoice-service]]
+
+    operator --> api
+    operator --> invoice
+    operator --> payment
+    invoice -. async .-> bus
+    bus -. async .-> payment
+    api -. optional .-> bus
 ```
 
-### C4 Containers
+### Container Diagram
 
 ```mermaid
-C4Container
-    title Container Diagram
-    Person(admin, "Operator")
-    System_Boundary(app, "Aspire Host") {
-        Container(web, "WebApi.Service", "ASP.NET Core", "Swagger + REST endpoints")
-        Container(invoice, "InvoiceMicroservice", ".NET worker", "MassTransit publisher (IMessageProducer)")
-        Container(payment, "PaymentMicroservice", ".NET worker", "MassTransit consumer (IMessageHandler)")
-        ContainerDb(config, "Shared Libraries", "C# class libraries", "MessageContracts + Messaging abstractions")
-    }
-    System_Ext(rabbit, "RabbitMQ", "Broker", "invoice-service exchange / payment-microservice queue")
-    admin -> web : HTTP
-    admin -> invoice : Console/CLI
-    admin -> payment : Console/CLI
-    invoice --> rabbit : Publish InvoiceCreated
-    payment <-- rabbit : Consume InvoiceCreated
-    web ..> rabbit : future publish/consume
-    invoice --> config : references
-    payment --> config : references
-    web --> config : references
+flowchart TB
+    subgraph AspireHost
+        direction LR
+        api[WebApi.Service<br/>ASP.NET Core]
+        shared[MessageContracts + Messaging]
+        invoice[InvoiceMicroservice<br/>Publisher]
+        payment[PaymentMicroservice<br/>Consumer]
+    end
+    bus[(RabbitMQ<br/>invoice-service exchange)]
+
+    api -- references --> shared
+    invoice -- references --> shared
+    payment -- references --> shared
+    invoice -. async .-> bus
+    bus -. async .-> payment
+    api -. future .-> bus
 ```
 
 Editable Excalidraw source for these diagrams lives at `C:\Git\Untitled-2025-11-13-2006.excalidraw`.
