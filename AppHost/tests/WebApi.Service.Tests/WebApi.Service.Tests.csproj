@@ -12,6 +12,6 @@
     <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\WebApi.Service\WebApi.Service.csproj" />
+    <ProjectReference Include="..\..\WebApi.Service\WebApi.Service.csproj" />
   </ItemGroup>
 </Project>

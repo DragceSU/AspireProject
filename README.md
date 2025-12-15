@@ -5,7 +5,7 @@ Modern .NET Aspire sample that wires together an API gateway, an invoice produce
 ## Repository Layout
 
 - `AppHost/AppHost` – Aspire distributed app host that orchestrates the Web API plus invoice and payment microservices.
-- `AppHost/WebApi.Service` (+ `.Tests`) – ASP.NET Core 10 API that exposes the sample `/WeatherForecast` endpoint and ships with NUnit integration tests.
+- `AppHost/WebApi.Service` (+ `tests/WebApi.Service.Tests`) – ASP.NET Core 10 API that exposes the sample `/WeatherForecast` endpoint and ships with NUnit integration tests.
 - `AppHost/InvoiceMicroservice` – Console worker that creates fake invoices interactively and publishes `InvoiceCreated` events via MassTransit and RabbitMQ.
 - `AppHost/PaymentMicroservice` – Worker that subscribes to the invoices exchange/queue and logs (or processes) each invoice.
 - `AppHost/MessageContracts` – Shared POCO contracts for invoices plus the `Message` base type.
@@ -45,7 +45,7 @@ flowchart LR
 Each scenario has supporting tests:
 - `AppHost/tests/InvoiceMicroservice.Tests` validates producer behavior plus RabbitMQ publishing.
 - `AppHost/tests/PaymentMicroservice.Tests` checks consumer delegation and end-to-end queue handling.
-- `AppHost/WebApi.Service.Tests` verifies the API returns five forecasts with valid data.
+- `AppHost/tests/WebApi.Service.Tests` verifies the API returns five forecasts with valid data.
 
 ## Running the Stack Locally
 

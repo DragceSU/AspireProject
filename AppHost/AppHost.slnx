@@ -2,7 +2,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/InvoiceMicroservice.Tests/InvoiceMicroservice.Tests.csproj" Id="ac0f3fb2-97f3-4f3f-bd3e-53eb9c9fb3e8" />
     <Project Path="tests/PaymentMicroservice.Tests/PaymentMicroservice.Tests.csproj" Id="bff5887f-5a7e-4e49-83d3-6d2c733f1fd4" />
-    <Project Path="WebApi.Service.Tests/WebApi.Service.Tests.csproj" />
+    <Project Path="tests/WebApi.Service.Tests/WebApi.Service.Tests.csproj" />
   </Folder>
   <Project Path="AppHost/AppHost.csproj" />
   <Project Path="InvoiceMicroservice/InvoiceMicroservice.csproj" Id="840b98ff-5d75-47a1-9599-c4a98fd4f418" />
