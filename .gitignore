@@ -1,0 +1,58 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.cache
+*.pdb
+*.opendb
+*.dbmdl
+*.log
+
+# IDE settings
+.vs/
+.idea/
+.vscode/
+*.DotSettings.user
+*.slnx.DotSettings.user
+
+# Generated files
+launchSettings.json
+appsettings.Development.json
+appsettings.*.local.json
+
+# OS metadata
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Docker
+**/bin/Debug/net*/publish/
+**/bin/Release/net*/publish/
+*.docker-compose.override.yml
+
+# Test results
+TestResult*/
+*.coverage*
+*.trx
+
+# Rider / JetBrains
+.idea/
+*/.idea/
+*.iml
+
+# NuGet
+*.nupkg
+.nuget/packages/
+
+# Logs
+logs/
+*.log
+
+# Local tools
+tools/
+*.local.json
