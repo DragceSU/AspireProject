@@ -4,7 +4,7 @@ Modern .NET Aspire sample that wires together an API gateway, an invoice produce
 
 ## Repository Layout
 
-- `AppHost/AppHost` – Aspire distributed app host (today it starts the Web API, and is ready to include the other services).
+- `AppHost/AppHost` – Aspire distributed app host that orchestrates the Web API plus invoice and payment microservices.
 - `AppHost/WebApi.Service` (+ `.Tests`) – ASP.NET Core 10 API that exposes the sample `/WeatherForecast` endpoint and ships with NUnit integration tests.
 - `AppHost/InvoiceMicroservice` – Console worker that creates fake invoices interactively and publishes `InvoiceCreated` events via MassTransit and RabbitMQ.
 - `AppHost/PaymentMicroservice` – Worker that subscribes to the invoices exchange/queue and logs (or processes) each invoice.
@@ -65,6 +65,7 @@ Each scenario has supporting tests:
    ```
 
 3. **Run services quickly**  
+   - **Aspire host**: `dotnet run --project AppHost/AppHost/AppHost.csproj` (launches all three services with Aspire dashboards when enabled).
    - **Windows**: `./run-services.ps1 -InvoiceInstances 1 -PaymentInstances 3 -RabbitHost localhost`
    - **Unix/macOS**: `./run-services.sh --paymentInstances 3 --rabbitHost localhost`
 
@@ -93,7 +94,7 @@ This runs the API, producer, and consumer test suites. Integration tests communi
 
 ## Extending the Architecture
 
-- **Wire microservices into Aspire**: register Invoice & Payment projects in `AppHost/AppHost/AppHost.cs` to gain service discovery, shared environment configuration, and consolidated dashboards.
+- **Deepen Aspire integration**: configure per-service resources (RabbitMQ container, dashboards, secrets) or add health checks so Aspire’s environment view reflects production topology.
 - **Enhance message handling**: replace the logging-only `MessageHandler<T>` with richer business logic, validation, and error handling policies.
 - **Add API endpoints**: expose invoice/payment status via `WebApi.Service`, using the shared contracts to keep REST + messaging synchronized.
 
