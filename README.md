@@ -36,6 +36,50 @@ flowchart LR
     M --> A
 ```
 
+### C4 Context
+
+```mermaid
+C4Context
+    title System Context
+    Person(admin, "Operator", "Observes dashboards, triggers scripts")
+    System_Boundary(app, "AspireProject") {
+        System_Ext(api, "WebApi.Service", "HTTP API, Swagger UI")
+        System_Ext(inv, "InvoiceMicroservice", "Publishes invoices via RabbitMQ")
+        System_Ext(pay, "PaymentMicroservice", "Consumes invoices, processes payments")
+    }
+    System_Ext(rabbit, "RabbitMQ", "Message broker (fanout exchange)")
+    admin -> api : View docs / call endpoints
+    admin -> inv : Trigger invoice generation
+    admin -> pay : Monitor logs
+    inv -> rabbit : Publish InvoiceCreated events
+    rabbit -> pay : Push events to queue
+    api -> rabbit : (future) publish/consume
+```
+
+### C4 Containers
+
+```mermaid
+C4Container
+    title Container Diagram
+    Person(admin, "Operator")
+    System_Boundary(app, "Aspire Host") {
+        Container(web, "WebApi.Service", "ASP.NET Core", "Swagger + REST endpoints")
+        Container(invoice, "InvoiceMicroservice", ".NET worker", "MassTransit publisher (IMessageProducer)")
+        Container(payment, "PaymentMicroservice", ".NET worker", "MassTransit consumer (IMessageHandler)")
+        ContainerDb(config, "Shared Libraries", "C# class libraries", "MessageContracts + Messaging abstractions")
+    }
+    System_Ext(rabbit, "RabbitMQ", "Broker", "invoice-service exchange / payment-microservice queue")
+    admin -> web : HTTP
+    admin -> invoice : Console/CLI
+    admin -> payment : Console/CLI
+    invoice --> rabbit : Publish InvoiceCreated
+    payment <-- rabbit : Consume InvoiceCreated
+    web ..> rabbit : future publish/consume
+    invoice --> config : references
+    payment --> config : references
+    web --> config : references
+```
+
 ## Core Scenarios (“Cases”)
 
 1. **Invoice creation & publishing** – The `InvoiceMicroservice` (`AppHost/InvoiceMicroservice/Program.cs`) reads RabbitMQ settings (appsettings or `RABBIT_HOST`) and waits for keyboard input. Each keystroke (except `q`) generates deterministic-but-random invoices and publishes them via `IMessageProducer<InvoiceCreated>`, ensuring traceable IDs and sample line items for downstream consumers.
