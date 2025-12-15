@@ -1,11 +1,13 @@
 <Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/InvoiceMicroservice.Tests/InvoiceMicroservice.Tests.csproj" Id="ac0f3fb2-97f3-4f3f-bd3e-53eb9c9fb3e8" />
+    <Project Path="tests/PaymentMicroservice.Tests/PaymentMicroservice.Tests.csproj" Id="bff5887f-5a7e-4e49-83d3-6d2c733f1fd4" />
+    <Project Path="WebApi.Service.Tests/WebApi.Service.Tests.csproj" />
+  </Folder>
   <Project Path="AppHost/AppHost.csproj" />
   <Project Path="InvoiceMicroservice/InvoiceMicroservice.csproj" Id="840b98ff-5d75-47a1-9599-c4a98fd4f418" />
   <Project Path="MessageContracts/MessageContracts.csproj" Id="4385c210-c7e2-4c4a-9a16-fd54e2d1885a" />
   <Project Path="Messaging/Messaging.csproj" Id="b6c1f4b8-6fa5-4e2a-8f4a-0c4cc1ad6c5c" />
   <Project Path="PaymentMicroservice/PaymentMicroservice.csproj" Id="ae24ef6c-61f3-4baf-ac73-dd01a01561e2" />
-  <Project Path="tests/PaymentMicroservice.Tests/PaymentMicroservice.Tests.csproj" Id="bff5887f-5a7e-4e49-83d3-6d2c733f1fd4" />
-  <Project Path="tests/InvoiceMicroservice.Tests/InvoiceMicroservice.Tests.csproj" Id="ac0f3fb2-97f3-4f3f-bd3e-53eb9c9fb3e8" />
-  <Project Path="WebApi.Service.Tests/WebApi.Service.Tests.csproj" />
   <Project Path="WebApi.Service/WebApi.Service.csproj" />
 </Solution>
