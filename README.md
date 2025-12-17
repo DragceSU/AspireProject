@@ -18,16 +18,21 @@ Modern .NET Aspire sample that wires together an API gateway, an invoice produce
 
 ```mermaid
 flowchart LR
+    subgraph Experiences
+        W[Next.js Webapp<br/>SPA]
+    end
+
     subgraph Services
         A[WebApi.Service<br/>HTTP API]
         B[InvoiceMicroservice<br/>Publisher]
         C[PaymentMicroservice<br/>Consumer]
     end
 
+    W -- REST/JSON --> A
     B -- InvoiceCreated --> Q[(RabbitMQ<br/>Exchange: invoice-service)]
     Q -- fanout/queue --> C
     A -. OrderSubmission .-> O[(RabbitMQ<br/>Exchange: order-service)]
-    O -. fanout/queue .-> invoice
+    O -. fanout/queue .-> B
 
     subgraph Shared Libraries
         M[MessageContracts<br/>+ Messaging]
@@ -42,17 +47,18 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    operator([Operator])
+    user([Web operator])
+    spa[/Next.js SPA/]
     subgraph AspireHost
         api[(WebApi.Service)]
         invoice[(InvoiceMicroservice)]
         payment[(PaymentMicroservice)]
     end
-    bus[[RabbitMQ<br/>invoice-service]]
+    bus[[RabbitMQ<br/>invoice-service & order-service]]
 
-    operator --> api
-    operator --> invoice
-    operator --> payment
+    user --> spa
+    spa --> api
+    api --> user
     invoice -. async .-> bus
     bus -. async .-> payment
     api -. OrderSubmission .-> bus
@@ -70,7 +76,9 @@ flowchart TB
         payment[PaymentMicroservice<br/>Consumer]
     end
     bus[(RabbitMQ<br/>invoice-service exchange)]
+    webapp[Storefront<br/>Next.js 14]
 
+    webapp -- REST + Swagger --> api
     api -- references --> shared
     invoice -- references --> shared
     payment -- references --> shared
