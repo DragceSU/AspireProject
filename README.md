@@ -16,7 +16,7 @@ Modern .NET Aspire sample that wires together an API gateway, an invoice produce
 
 ## Solution Topology
 
-![System Architecture](System Architecture.png)
+![System Architecture](https://github.com/DragceSU/AspireProject/blob/main/System%20Architecture.png?raw=true)
 
 ```mermaid
 flowchart LR
