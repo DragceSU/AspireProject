@@ -56,3 +56,10 @@ logs/
 # Local tools
 tools/
 *.local.json
+
+# Webapp (Next.js / Node)
+webapp/node_modules/
+webapp/.next/
+webapp/out/
+webapp/.turbo/
+webapp/.vercel/
