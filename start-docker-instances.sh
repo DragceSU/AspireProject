@@ -7,6 +7,11 @@ set -euo pipefail
 
 INVOICE_COUNT=1
 PAYMENT_COUNT=1
+WEBAPI_CONTAINER_NAME="aspire-webapi"
+WEBAPI_IMAGE_NAME="aspire-webapi"
+WEBAPI_PORT=5088
+RABBITMQ_CONTAINER_NAME="rabbitmq"
+NETWORK_NAME="aspire-net"
 
 usage() {
   cat <<USAGE
@@ -77,5 +82,49 @@ start_instances() {
 
 start_instances "invoice-microservice" "$INVOICE_COUNT" "invoice-microservice"
 start_instances "payment-microservice" "$PAYMENT_COUNT" "payment-microservice"
+
+ensure_network() {
+  if ! docker network ls --format '{{.Name}}' | grep -qx "$NETWORK_NAME"; then
+    echo "Creating Docker network: $NETWORK_NAME"
+    docker network create "$NETWORK_NAME" >/dev/null
+  fi
+}
+
+container_on_network() {
+  local container=$1
+  docker network inspect "$NETWORK_NAME" --format '{{range $id,$container := .Containers}}{{println $container.Name}}{{end}}' 2>/dev/null | grep -qx "$container"
+}
+
+ensure_rabbit_ready() {
+  if ! docker ps --format '{{.Names}}' | grep -qx "$RABBITMQ_CONTAINER_NAME"; then
+    echo "RabbitMQ container '$RABBITMQ_CONTAINER_NAME' must be running before starting WebApi.Service." >&2
+    exit 1
+  fi
+}
+
+start_webapi() {
+  ensure_rabbit_ready
+  ensure_network
+
+  if ! container_on_network "$RABBITMQ_CONTAINER_NAME"; then
+    echo "Attaching $RABBITMQ_CONTAINER_NAME to $NETWORK_NAME..."
+    docker network connect "$NETWORK_NAME" "$RABBITMQ_CONTAINER_NAME" >/dev/null || true
+  fi
+
+  if docker ps -a --format '{{.Names}}' | grep -qx "$WEBAPI_CONTAINER_NAME"; then
+    echo "Stopping and removing existing container: $WEBAPI_CONTAINER_NAME"
+    docker rm -f "$WEBAPI_CONTAINER_NAME" >/dev/null
+  fi
+
+  echo "Starting $WEBAPI_CONTAINER_NAME (detached, mapped to http://localhost:${WEBAPI_PORT})..."
+  docker run -d --rm \
+    --name "$WEBAPI_CONTAINER_NAME" \
+    --network "$NETWORK_NAME" \
+    -p "${WEBAPI_PORT}:8080" \
+    -e ASPNETCORE_ENVIRONMENT=Development \
+    "$WEBAPI_IMAGE_NAME" >/dev/null
+}
+
+start_webapi
 
 echo "Done. Use 'docker ps' to view containers and 'docker logs -f <name>' to follow output."
