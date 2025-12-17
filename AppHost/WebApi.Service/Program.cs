@@ -59,10 +59,20 @@ app.Run();
 static string ResolveRabbitHost(string? configuredHost)
 {
     var hostName = string.IsNullOrWhiteSpace(configuredHost) ? "host.docker.internal" : configuredHost;
+
     if (!IsRunningInContainer())
+    {
         if (string.IsNullOrWhiteSpace(configuredHost) ||
             string.Equals(configuredHost, "host.docker.internal", StringComparison.OrdinalIgnoreCase))
             hostName = "localhost";
+
+    }
+    else
+    {
+        if (string.IsNullOrWhiteSpace(configuredHost) ||
+            string.Equals(configuredHost, "host.docker.internal", StringComparison.OrdinalIgnoreCase))
+            hostName = "rabbitmq";
+    }
 
     return hostName;
 }

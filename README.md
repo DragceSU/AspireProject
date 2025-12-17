@@ -103,6 +103,7 @@ Each scenario has supporting tests:
      rabbitmq:3-management
    ```
    Management UI becomes available at `http://localhost:15672` (`guest/guest`).
+   > Tip: keep the container name `rabbitmq`; the Web API resolves that hostname when running in Docker.
 
 2. **Build everything**  
    ```bash
@@ -132,11 +133,29 @@ Each scenario has supporting tests:
    ```
    The app runs at `http://localhost:3000`, calls the API via the `NEXT_PUBLIC_WEBAPI_BASE_URL` env var, and expects the API to have CORS enabled (defaults already permit `http://localhost:3000`).
 
-4. **Dockerized microservices** (expects a RabbitMQ endpoint reachable via `host.docker.internal`):  
+5. **Dockerized microservices** (expects a RabbitMQ endpoint reachable via `host.docker.internal`):  
    ```bash
    ./start-docker-instances.sh InvoiceCount 1 PaymentCount 2
    ```
    The script removes old containers, starts new detached instances, and maps the host gateway automatically.
+
+6. **Dockerized Web API**  
+   Build from the `AppHost` directory (so the Dockerfile can locate shared projects):
+   ```bash
+   cd AppHost
+   docker build -t aspire-webapi -f WebApi.Service/Dockerfile .
+   ```
+   The API container needs to reach RabbitMQ via Docker DNS. Create a bridge network once, then attach both containers and run the API:
+   ```bash
+   docker network create aspire-net                           # no-op if it already exists
+   docker network connect aspire-net rabbitmq                # only needed the first time
+   docker run -d --rm --name aspire-webapi \
+     --network aspire-net \
+     -p 5088:8080 \
+     -e ASPNETCORE_ENVIRONMENT=Development \
+     aspire-webapi
+   ```
+   `MassTransit` now resolves the broker at `rabbitmq:5672`, while the host accesses Swagger at `http://localhost:5088/swagger`. Use `docker logs aspire-webapi` to confirm `Bus started: rabbitmq://rabbitmq/`.
 
 ## Configuration Notes
 
