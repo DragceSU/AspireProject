@@ -91,6 +91,61 @@ flowchart TB
 
 Editable Excalidraw source for these diagrams lives at `C:\Git\Untitled-2025-11-13-2006.excalidraw`.
 
+### Component Diagram – Web API
+
+```mermaid
+flowchart LR
+    subgraph WebApi.Service
+        controller[Controllers<br/>Orders + Weather]
+        services[OrderProducer<br/>+ MessageProducer]
+        configs[AppConfiguration<br/>& Options]
+    end
+    sharedContracts[(MessageContracts<br/>DTOs)]
+    masstransit[MassTransit<br/>+ RabbitMQ client]
+    swagger[Swagger/OpenAPI]
+    cors[CORS Policy]
+    bus[(RabbitMQ Exchanges)]
+
+    controller --> services
+    controller --> swagger
+    controller --> cors
+    services --> masstransit --> bus
+    services --> sharedContracts
+    controller --> sharedContracts
+    configs --> controller
+    configs --> services
+```
+
+### Component Diagram – Worker Services
+
+```mermaid
+flowchart LR
+    subgraph InvoiceMicroservice
+        input[Console Input<br/>InvoiceGenerator]
+        invoiceProducer[IMessageProducer<InvoiceCreated>]
+        orderConsumer[OrderSubmission Handler]
+    end
+
+    subgraph PaymentMicroservice
+        consumer[InvoiceCreatedConsumer]
+        handler[IMessageHandler<InvoiceCreated>]
+    end
+
+    contracts[(MessageContracts)]
+    messaging[(Messaging Abstractions)]
+    rabbit[(RabbitMQ Exchanges)]
+
+    input --> invoiceProducer
+    invoiceProducer --> rabbit
+    orderConsumer <-- rabbit
+    consumer --> handler
+    consumer <-- rabbit
+    orderConsumer --> messaging
+    invoiceProducer --> messaging
+    handler --> messaging
+    messaging --> contracts
+```
+
 ## Core Scenarios (“Cases”)
 
 1. **Invoice creation & publishing** - The `InvoiceMicroservice` (`AppHost/InvoiceMicroservice/Program.cs`) reads RabbitMQ settings (appsettings or `RABBIT_HOST`) and waits for keyboard input. Each keystroke (except `q`) generates deterministic-but-random invoices and publishes them via `IMessageProducer<InvoiceCreated>`, ensuring traceable IDs and sample line items for downstream consumers.
