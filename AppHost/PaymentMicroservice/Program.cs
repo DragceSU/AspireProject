@@ -21,9 +21,9 @@ builder.Services.AddMassTransit(x =>
     {
         var options = context.GetRequiredService<IOptions<AppConfiguration>>().Value;
         var rabbitConfig = options.RabbitMq ?? new RabbitMqConfiguration();
-        var hostName = string.IsNullOrWhiteSpace(rabbitConfig.Host) ? "localhost" : rabbitConfig.Host;
+        var hostName = ResolveRabbitHost(rabbitConfig.Host);
         var queueName = string.IsNullOrWhiteSpace(rabbitConfig.QueueName) ? "payment-microservice" : rabbitConfig.QueueName;
-        var exchangeName = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeName) ? "invoice-service" : rabbitConfig.ExchangeName;
+        var exchangeName = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeName) ? "payment-service" : rabbitConfig.ExchangeName;
         var exchangeType = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeType) ? "fanout" : rabbitConfig.ExchangeType;
 
         cfg.Host(hostName);
@@ -42,3 +42,30 @@ builder.Services.AddLogging();
 
 var host = builder.Build();
 await host.RunAsync();
+
+static string ResolveRabbitHost(string? configuredHost)
+{
+    var hostName = string.IsNullOrWhiteSpace(configuredHost) ? "host.docker.internal" : configuredHost;
+    if (!IsRunningInContainer())
+    {
+        if (string.IsNullOrWhiteSpace(configuredHost) ||
+            string.Equals(configuredHost, "host.docker.internal", StringComparison.OrdinalIgnoreCase))
+        {
+            hostName = "localhost";
+        }
+    }
+
+    return hostName;
+}
+
+static bool IsRunningInContainer()
+{
+    var aspireResource = Environment.GetEnvironmentVariable("ASPIRE_RESOURCE_NAME");
+    if (!string.IsNullOrWhiteSpace(aspireResource))
+    {
+        return true;
+    }
+
+    var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER");
+    return string.Equals(runningInContainer, "true", StringComparison.OrdinalIgnoreCase);
+}

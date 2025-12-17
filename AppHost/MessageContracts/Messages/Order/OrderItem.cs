@@ -1,17 +1,16 @@
-﻿namespace MessageContracts.Messages.Invoice;
+namespace MessageContracts.Messages.Order;
 
-public class InvoiceItems : Message
+public class OrderItem
 {
-    public InvoiceItems()
-    {
-        Type = MessageType.InvoiceItems;
-    }
 
     public string ProductId { get; init; } = string.Empty;
 
+
     public string Name { get; init; } = string.Empty;
 
+ 
     public int Quantity { get; init; }
+
 
     public decimal UnitPrice { get; init; }
 }

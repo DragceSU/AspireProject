@@ -1,11 +1,14 @@
+using InvoiceMicroservice;
+using InvoiceMicroservice.Consumers;
 using MassTransit;
 using MessageContracts.Messages.Invoice;
+using MessageContracts.Messages.Order;
+using Messaging.Handlers;
 using Messaging.Producers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using InvoiceMicroservice;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.json", true, true);
@@ -14,74 +17,58 @@ builder.Services.Configure<AppConfiguration>(builder.Configuration);
 
 builder.Services.AddMassTransit(x =>
 {
+    x.AddConsumer<OrderConsumer>();
+
     x.UsingRabbitMq((context, cfg) =>
     {
         var options = context.GetRequiredService<IOptions<AppConfiguration>>().Value;
         var rabbitConfig = options.RabbitMq ?? new RabbitMqConfiguration();
-        var hostName = string.IsNullOrWhiteSpace(rabbitConfig.Host) ? "localhost" : rabbitConfig.Host;
+        var hostName = ResolveRabbitHost(rabbitConfig.Host);
+        var queueName = string.IsNullOrWhiteSpace(rabbitConfig.QueueName) ? "invoice-order-submission" : rabbitConfig.QueueName;
+        var exchangeName = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeName) ? "invoice-order-service" : rabbitConfig.ExchangeName;
+        var exchangeType = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeType) ? "fanout" : rabbitConfig.ExchangeType;
 
         cfg.Host(hostName);
+
+        // Below declaration will use competing consumers pattern by default. To change this behavior, we need to set different queue name for each instance.
+        cfg.ReceiveEndpoint(queueName, e =>
+        {
+            e.Bind(exchangeName, bind => bind.ExchangeType = exchangeType);
+            e.ConfigureConsumer<OrderConsumer>(context);
+        });
     });
 });
 
-builder.Services.AddScoped(typeof(IMessageProducer<>), typeof(MessageProducer<>));
+builder.Services.AddScoped<IMessageHandler<OrderSubmission>, Messaging.Handlers.MessageHandler<OrderSubmission>>();
+builder.Services.AddScoped(typeof(IMessageProducer<InvoiceCreated>), typeof(MessageProducer<InvoiceCreated>));
 builder.Services.AddLogging();
 
 var host = builder.Build();
-await host.StartAsync();
+await host.RunAsync();
 
-var producer = host.Services.GetRequiredService<IMessageProducer<InvoiceCreated>>();
-var exit = false;
-while (!exit)
+static string ResolveRabbitHost(string? configuredHost)
 {
-    Console.WriteLine("Press 'q' to exit or any other key to create an invoice.");
-    var key = Console.ReadKey(true).Key;
-    if (key == ConsoleKey.Q)
+    var hostName = string.IsNullOrWhiteSpace(configuredHost) ? "host.docker.internal" : configuredHost;
+    if (!IsRunningInContainer())
     {
-        exit = true;
-        continue;
+        if (string.IsNullOrWhiteSpace(configuredHost) ||
+            string.Equals(configuredHost, "host.docker.internal", StringComparison.OrdinalIgnoreCase))
+        {
+            hostName = "localhost";
+        }
     }
 
-    var newInvoiceNumber = Random.Shared.Next(10000, 99999);
-    Console.WriteLine($"Created invoice with number: {newInvoiceNumber}");
-
-    InvoiceCreated invoiceCreated = new()
-    {
-        InvoiceNumber = newInvoiceNumber,
-        MessageId = newInvoiceNumber.ToString(),
-        InvoiceData = new InvoiceToCreate
-        {
-            MessageId = newInvoiceNumber.ToString(),
-            CustomerNumber = 12345,
-            InvoiceItems =
-            [
-                new InvoiceItems
-                {
-                    Description = "Item 1",
-                    Price = 100.0,
-                    ActualMileage = 50.0,
-                    BaseRate = 10.0,
-                    IsOversized = false,
-                    IsRefrigerated = false,
-                    IsHazardousMaterial = false,
-                    MessageId = newInvoiceNumber.ToString()
-                },
-                new InvoiceItems
-                {
-                    Description = "Item 2",
-                    Price = 200.0,
-                    ActualMileage = 75.0,
-                    BaseRate = 15.0,
-                    IsOversized = true,
-                    IsRefrigerated = false,
-                    IsHazardousMaterial = true,
-                    MessageId = newInvoiceNumber.ToString()
-                }
-            ]
-        }
-    };
-
-    await producer.Produce(invoiceCreated, CancellationToken.None);
+    return hostName;
 }
 
-await host.StopAsync();
+static bool IsRunningInContainer()
+{
+    var aspireResource = Environment.GetEnvironmentVariable("ASPIRE_RESOURCE_NAME");
+    if (!string.IsNullOrWhiteSpace(aspireResource))
+    {
+        return true;
+    }
+
+    var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER");
+    return string.Equals(runningInContainer, "true", StringComparison.OrdinalIgnoreCase);
+}

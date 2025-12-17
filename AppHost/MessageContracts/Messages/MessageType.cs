@@ -5,5 +5,6 @@ public enum MessageType
     Unknown = -1,
     InvoiceCreated = 0,
     InvoiceItems = 1,
-    InvoiceToCreate = 2
+    InvoiceToCreate = 2,
+    OrderSubmission = 3
 }

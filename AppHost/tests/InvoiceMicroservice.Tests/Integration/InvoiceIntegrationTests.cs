@@ -76,8 +76,8 @@ public class InvoiceIntegrationTests
                     .Build();
 
         await _host.StartAsync();
-
-        var publishEndpoint = _host.Services.GetRequiredService<IPublishEndpoint>();
+        using var scope = _host.Services.CreateScope();
+        var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
         var producer =
             new MessageProducer<InvoiceCreated>(publishEndpoint, NullLogger<MessageProducer<InvoiceCreated>>.Instance);
 
