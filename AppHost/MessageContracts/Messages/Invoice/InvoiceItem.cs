@@ -1,8 +1,8 @@
 ﻿namespace MessageContracts.Messages.Invoice;
 
-public class InvoiceItems : Message
+public class InvoiceItem : Message
 {
-    public InvoiceItems()
+    public InvoiceItem()
     {
         Type = MessageType.InvoiceItems;
     }

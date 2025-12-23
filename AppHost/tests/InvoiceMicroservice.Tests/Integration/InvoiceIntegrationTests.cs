@@ -1,6 +1,6 @@
 using MassTransit;
 using MessageContracts.Messages.Invoice;
-using Messaging.Producers;
+using Messaging.RabbitMq.Producers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -79,7 +79,7 @@ public class InvoiceIntegrationTests
         using var scope = _host.Services.CreateScope();
         var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
         var producer =
-            new MessageProducer<InvoiceCreated>(publishEndpoint, NullLogger<MessageProducer<InvoiceCreated>>.Instance);
+            new MessagePublisher<InvoiceCreated>(publishEndpoint, NullLogger<MessagePublisher<InvoiceCreated>>.Instance);
 
         var message = new InvoiceCreated
         {
@@ -87,7 +87,7 @@ public class InvoiceIntegrationTests
             InvoiceData = new InvoiceToCreate { CustomerNumber = 321 }
         };
 
-        await producer.Produce(message, CancellationToken.None);
+        await producer.Publish(message, CancellationToken.None);
 
         var received = await Task.WhenAny(_tcs.Task, Task.Delay(TimeSpan.FromSeconds(2)));
 

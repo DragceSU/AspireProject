@@ -10,7 +10,8 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["WebApi.Service/WebApi.Service.csproj", "WebApi.Service/"]
 COPY ["MessageContracts/MessageContracts.csproj", "MessageContracts/"]
-COPY ["Messaging/Messaging.csproj", "Messaging/"]
+COPY ["Messaging.Kafka/Messaging.Kafka.csproj", "Messaging.Kafka/"]
+COPY ["Messaging.RabbitMq/Messaging.RabbitMq.csproj", "Messaging.RabbitMq/"]
 RUN dotnet restore "WebApi.Service/WebApi.Service.csproj"
 COPY . .
 WORKDIR "/src/WebApi.Service"
@@ -23,5 +24,5 @@ RUN dotnet publish "WebApi.Service.csproj" -c $BUILD_CONFIGURATION -o /app/publi
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_URLS=http://+:5088
 ENTRYPOINT ["dotnet", "WebApi.Service.dll"]

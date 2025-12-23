@@ -1,6 +1,6 @@
 using MessageContracts.Messages;
 
-namespace Messaging.Handlers;
+namespace Messaging.RabbitMq.Handlers;
 
 public interface IMessageHandler<in T> where T : Message
 {

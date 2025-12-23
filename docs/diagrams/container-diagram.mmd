@@ -1,0 +1,18 @@
+flowchart TB
+    subgraph AspireHost
+        direction LR
+        api[WebApi.Service<br/>ASP.NET Core]
+        shared[MessageContracts + Messaging]
+        invoice[InvoiceMicroservice<br/>Publisher]
+        payment[PaymentMicroservice<br/>Consumer]
+    end
+    bus[(RabbitMQ<br/>invoice-service exchange)]
+    webapp[Storefront<br/>Next.js 14]
+
+    webapp -- REST + Swagger --> api
+    api -- references --> shared
+    invoice -- references --> shared
+    payment -- references --> shared
+    invoice -. async .-> bus
+    bus -. async .-> payment
+    api -. OrderSubmission .-> bus

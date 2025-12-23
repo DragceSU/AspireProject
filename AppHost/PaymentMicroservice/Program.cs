@@ -1,12 +1,14 @@
 using MassTransit;
 using MessageContracts.Messages.Invoice;
-using Messaging.Handlers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using PaymentMicroservice;
 using PaymentMicroservice.Consumers;
+using KafkaHandlers = Messaging.Kafka.Handlers;
+using RabbitHandlers = Messaging.RabbitMq.Handlers;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.json", true, true);
@@ -15,9 +17,30 @@ builder.Services.Configure<AppConfiguration>(builder.Configuration);
 
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<InvoiceCreatedConsumer>();
+    x.AddConsumer<RabbitMqInvoiceCreatedConsumer>();
+    x.AddRider(rider =>
+    {
+        rider.AddConsumer<KafkaInvoiceCreatedConsumer>();
 
-    x.UsingRabbitMq((context, cfg) =>
+        rider.UsingKafka((context, config) =>
+        {
+            var options = context.GetRequiredService<IOptions<AppConfiguration>>().Value;
+            var kafka = options.Kafka;
+            var bootstrapServers = string.IsNullOrWhiteSpace(kafka.BootstrapServers)
+                ? "localhost:9092"
+                : kafka.BootstrapServers;
+            var topic = typeof(InvoiceCreated).FullName!.ToLowerInvariant();
+            var groupId = string.IsNullOrWhiteSpace(kafka.ConsumerGroup) ? "payment-microservice" : kafka.ConsumerGroup;
+
+            config.Host(bootstrapServers);
+            config.TopicEndpoint<InvoiceCreated>(topic, groupId, endpoint =>
+            {
+                endpoint.ConfigureConsumer<KafkaInvoiceCreatedConsumer>(context);
+            });
+        });
+    });
+
+    x.UsingRabbitMq((context, config) =>
     {
         var options = context.GetRequiredService<IOptions<AppConfiguration>>().Value;
         var rabbitConfig = options.RabbitMq ?? new RabbitMqConfiguration();
@@ -26,21 +49,30 @@ builder.Services.AddMassTransit(x =>
         var exchangeName = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeName) ? "payment-service" : rabbitConfig.ExchangeName;
         var exchangeType = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeType) ? "fanout" : rabbitConfig.ExchangeType;
 
-        cfg.Host(hostName);
+        config.Host(hostName);
 
         // Below declaration will use competing consumers pattern by default. To change this behavior, we need to set different queue name for each instance.
-        cfg.ReceiveEndpoint(queueName, e =>
+        config.ReceiveEndpoint(queueName, e =>
         {
             e.Bind(exchangeName, x => x.ExchangeType = exchangeType);
-            e.ConfigureConsumer<InvoiceCreatedConsumer>(context);
+            e.ConfigureConsumer<RabbitMqInvoiceCreatedConsumer>(context);
         });
     });
 });
 
-builder.Services.AddScoped<IMessageHandler<InvoiceCreated>, Messaging.Handlers.MessageHandler<InvoiceCreated>>();
+builder.Services.AddScoped<RabbitHandlers.IMessageHandler<InvoiceCreated>, RabbitHandlers.MessageHandler<InvoiceCreated>>();
+builder.Services.AddScoped<KafkaHandlers.IMessageHandler<InvoiceCreated>, KafkaHandlers.MessageHandler<InvoiceCreated>>();
+//builder.Services.AddScoped<IConsumer<InvoiceCreated>, KafkaInvoiceCreatedConsumer>();
 builder.Services.AddLogging();
 
 var host = builder.Build();
+var startupLogger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+var startupOptions = host.Services.GetRequiredService<IOptions<AppConfiguration>>().Value;
+startupLogger.LogInformation(
+    "Kafka config: BootstrapServers={BootstrapServers}, Topic={Topic}, ConsumerGroup={ConsumerGroup}",
+    startupOptions.Kafka.BootstrapServers,
+    typeof(InvoiceCreated).Name,
+    startupOptions.Kafka.ConsumerGroup);
 await host.RunAsync();
 
 static string ResolveRabbitHost(string? configuredHost)

@@ -8,5 +8,5 @@ public class InvoiceToCreate : Message
     }
 
     public int CustomerNumber { get; set; }
-    public List<InvoiceItems>? InvoiceItems { get; set; }
+    public List<InvoiceItem>? InvoiceItems { get; set; }
 }

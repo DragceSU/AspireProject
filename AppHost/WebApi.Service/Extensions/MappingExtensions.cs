@@ -1,3 +1,4 @@
+using MessageContracts.Messages.Invoice;
 using MessageContracts.Messages.Order;
 using WebApi.Service.Dtos;
 
@@ -25,6 +26,20 @@ public static class MappingExtensions
     public static OrderItem ToOrderItemMessage(this OrderItemDto dto)
     {
         return new OrderItem
+        {
+            ProductId = dto.ProductId,
+            Name = dto.Name,
+            Quantity = dto.Quantity,
+            UnitPrice = dto.UnitPrice
+        };
+    }
+
+    public static IEnumerable<InvoiceItem> ToInvoiceItems(this IEnumerable<OrderItem> orderItemDtos) =>
+        orderItemDtos.Select(dto => dto.ToInvoiceItem());
+
+    public static InvoiceItem ToInvoiceItem(this OrderItem dto)
+    {
+        return new InvoiceItem
         {
             ProductId = dto.ProductId,
             Name = dto.Name,

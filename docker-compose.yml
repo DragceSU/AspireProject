@@ -1,0 +1,38 @@
+services:
+  kafka-kraft:
+    image: apache/kafka:latest
+    container_name: kafka-kraft
+    ports:
+      - "9092:9092"       # internal container traffic (kafka-kraft)
+      - "9093:9093"       # controller
+      - "29092:29092"     # external host access
+    environment:
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-kraft:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-kraft:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+    networks:
+      - kafka-net
+
+  kowl:
+    image: rsmnarts/kowl:latest
+    container_name: kowl
+    depends_on:
+      - kafka-kraft
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_BROKERS: kafka-kraft:9092
+    networks:
+      - kafka-net
+
+networks:
+  kafka-net:
+    driver: bridge

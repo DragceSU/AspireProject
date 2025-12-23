@@ -1,0 +1,25 @@
+flowchart LR
+    subgraph InvoiceMicroservice
+        input[Console Input<br/>InvoiceGenerator]
+        invoiceProducer[IMessageProducer<InvoiceCreated>]
+        orderConsumer[OrderSubmission Handler]
+    end
+
+    subgraph PaymentMicroservice
+        consumer[InvoiceCreatedConsumer]
+        handler[IMessageHandler<InvoiceCreated>]
+    end
+
+    contracts[(MessageContracts)]
+    messaging[(Messaging Abstractions)]
+    rabbit[(RabbitMQ Exchanges)]
+
+    input --> invoiceProducer
+    invoiceProducer --> rabbit
+    orderConsumer <-- rabbit
+    consumer --> handler
+    consumer <-- rabbit
+    orderConsumer --> messaging
+    invoiceProducer --> messaging
+    handler --> messaging
+    messaging --> contracts

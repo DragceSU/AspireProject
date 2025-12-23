@@ -1,7 +1,7 @@
 using MessageContracts.Messages;
 using Microsoft.Extensions.Logging;
 
-namespace Messaging.Handlers;
+namespace Messaging.Kafka.Handlers;
 
 public class MessageHandler<T>(ILogger<MessageHandler<T>> logger) : IMessageHandler<T> where T : Message
 {

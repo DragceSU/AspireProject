@@ -1,0 +1,20 @@
+flowchart LR
+    subgraph WebApi.Service
+        controller[Controllers<br/>Orders + Weather]
+        services[OrderProducer<br/>+ MessageProducer]
+        configs[AppConfiguration<br/>& Options]
+    end
+    sharedContracts[(MessageContracts<br/>DTOs)]
+    masstransit[MassTransit<br/>+ RabbitMQ client]
+    swagger[Swagger/OpenAPI]
+    cors[CORS Policy]
+    bus[(RabbitMQ Exchanges)]
+
+    controller --> services
+    controller --> swagger
+    controller --> cors
+    services --> masstransit --> bus
+    services --> sharedContracts
+    controller --> sharedContracts
+    configs --> controller
+    configs --> services

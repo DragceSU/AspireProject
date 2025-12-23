@@ -1,6 +1,6 @@
 using MassTransit;
 using MessageContracts.Messages.Invoice;
-using Messaging.Handlers;
+using Messaging.RabbitMq.Handlers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -63,14 +63,14 @@ public class PaymentIntegrationTests
                      {
                          services.AddMassTransit(x =>
                          {
-                             x.AddConsumer<InvoiceCreatedConsumer>();
+                             x.AddConsumer<RabbitMqInvoiceCreatedConsumer>();
                              x.UsingRabbitMq((context, cfg) =>
                              {
                                  cfg.Host(_hostName);
                                  cfg.ReceiveEndpoint(_queueName, e =>
                                  {
                                      e.Bind(_exchangeName, x => x.ExchangeType = _exchangeType);
-                                     e.ConfigureConsumer<InvoiceCreatedConsumer>(context);
+                                     e.ConfigureConsumer<RabbitMqInvoiceCreatedConsumer>(context);
                                  });
                              });
                          });

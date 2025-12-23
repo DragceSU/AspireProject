@@ -1,10 +1,10 @@
 using MassTransit;
 using MessageContracts.Messages.Invoice;
-using Messaging.Handlers;
+using Messaging.Kafka.Handlers;
 
 namespace PaymentMicroservice.Consumers;
 
-public class InvoiceCreatedConsumer(IMessageHandler<InvoiceCreated> messageHandler) : IConsumer<InvoiceCreated>
+public class KafkaInvoiceCreatedConsumer(IMessageHandler<InvoiceCreated> messageHandler) : IConsumer<InvoiceCreated>
 {
     public Task Consume(ConsumeContext<InvoiceCreated> context)
     {

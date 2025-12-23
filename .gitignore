@@ -23,6 +23,8 @@
 launchSettings.json
 appsettings.Development.json
 appsettings.*.local.json
+.env
+.env.*.local
 
 # OS metadata
 Thumbs.db
@@ -37,6 +39,7 @@ Desktop.ini
 
 # Test results
 TestResult*/
+TestResults/
 *.coverage*
 *.trx
 
@@ -56,8 +59,13 @@ logs/
 # Local tools
 tools/
 *.local.json
+.aspire/
+**/artifacts/
+**/*.sqlite
+**/*.sqlite3
 
 # Webapp (Next.js / Node)
+**/node_modules/
 webapp/node_modules/
 webapp/.next/
 webapp/out/

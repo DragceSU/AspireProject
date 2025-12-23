@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.7" />
+    <PackageReference Include="MassTransit.Kafka" Version="8.5.7" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
     <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="10.0.1" />
@@ -17,8 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Messaging\Messaging.csproj" />
+    <ProjectReference Include="..\Messaging.Kafka\Messaging.Kafka.csproj" />
     <ProjectReference Include="..\MessageContracts\MessageContracts.csproj" />
+    <ProjectReference Include="..\Messaging.RabbitMq\Messaging.RabbitMq.csproj" />
   </ItemGroup>
 
 </Project>

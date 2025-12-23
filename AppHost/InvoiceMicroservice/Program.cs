@@ -3,12 +3,13 @@ using InvoiceMicroservice.Consumers;
 using MassTransit;
 using MessageContracts.Messages.Invoice;
 using MessageContracts.Messages.Order;
-using Messaging.Handlers;
-using Messaging.Producers;
+using Messaging.RabbitMq.Handlers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using KafkaProducer = Messaging.Kafka.Producers;
+using RabbitMQProducer = Messaging.RabbitMq.Producers;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.json", true, true);
@@ -19,10 +20,27 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<OrderConsumer>();
 
+    x.AddRider(rider =>
+    {
+        rider.AddProducer<InvoiceCreated>(typeof(InvoiceCreated).FullName!.ToLower(), (context, producerConfig) =>
+        {
+            producerConfig.EnableDeliveryReports = true;
+            producerConfig.EnableIdempotence = true;      // optional, for stronger guarantees
+            producerConfig.MessageSendMaxRetries = 10;
+        });
+
+        rider.UsingKafka((context, k) =>
+        {
+            var kafkaOptions = context.GetRequiredService<IOptions<AppConfiguration>>().Value.Kafka;
+            var bootstrapServers = string.IsNullOrWhiteSpace(kafkaOptions.BootstrapServers) ? "localhost:9092" : kafkaOptions.BootstrapServers;
+            k.Host(bootstrapServers);
+        });
+    });
+
     x.UsingRabbitMq((context, cfg) =>
     {
         var options = context.GetRequiredService<IOptions<AppConfiguration>>().Value;
-        var rabbitConfig = options.RabbitMq ?? new RabbitMqConfiguration();
+        var rabbitConfig = options.RabbitMq;
         var hostName = ResolveRabbitHost(rabbitConfig.Host);
         var queueName = string.IsNullOrWhiteSpace(rabbitConfig.QueueName) ? "invoice-order-submission" : rabbitConfig.QueueName;
         var exchangeName = string.IsNullOrWhiteSpace(rabbitConfig.ExchangeName) ? "invoice-order-service" : rabbitConfig.ExchangeName;
@@ -39,8 +57,9 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-builder.Services.AddScoped<IMessageHandler<OrderSubmission>, Messaging.Handlers.MessageHandler<OrderSubmission>>();
-builder.Services.AddScoped(typeof(IMessageProducer<InvoiceCreated>), typeof(MessageProducer<InvoiceCreated>));
+builder.Services.AddSingleton<IMessageHandler<OrderSubmission>, Messaging.RabbitMq.Handlers.MessageHandler<OrderSubmission>>();
+builder.Services.AddScoped(typeof(RabbitMQProducer.IMessagePublisher<>), typeof(RabbitMQProducer.MessagePublisher<>));
+builder.Services.AddScoped(typeof(KafkaProducer.IMessagePublisher<>), typeof(KafkaProducer.MessagePublisher<>));
 builder.Services.AddLogging();
 
 var host = builder.Build();
