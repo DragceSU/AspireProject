@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Starts InvoiceMicroservice and PaymentMicroservice containers in detached mode.
-# Usage: ./start-docker-instances.sh [InvoiceCount <n>] [PaymentCount <n>]
-# Defaults are 1 instance each. Containers are suffixed with "-<n>" when count > 1.
+# Starts InvoiceMicroservice, PaymentMicroservice, and a single WebApi.Service container in detached mode.
+# Usage: ./start-docker-instances.sh [InvoiceCount <n>] [PaymentCount <n>] [WebApiEnabled <true|false>]
+# Defaults are 1 instance each for invoice/payment and WebApi enabled. Containers are suffixed with "-<n>" when count > 1.
 
 INVOICE_COUNT=1
 PAYMENT_COUNT=1
+WEBAPI_ENABLED=true
 WEBAPI_CONTAINER_NAME="aspire-webapi"
 WEBAPI_IMAGE_NAME="aspire-webapi"
 WEBAPI_PORT=5088
@@ -15,8 +16,8 @@ NETWORK_NAME="aspire-net"
 
 usage() {
   cat <<USAGE
-Usage: $0 [InvoiceCount <n>] [PaymentCount <n>]
-Example: $0 InvoiceCount 2 PaymentCount 3
+Usage: $0 [InvoiceCount <n>] [PaymentCount <n>] [WebApiEnabled <true|false>]
+Example: $0 InvoiceCount 2 PaymentCount 3 WebApiEnabled false
 USAGE
   exit 1
 }
@@ -30,6 +31,10 @@ while [ "$#" -gt 0 ]; do
     PaymentCount)
       shift || usage
       PAYMENT_COUNT="$1"
+      ;;
+    WebApiEnabled)
+      shift || usage
+      WEBAPI_ENABLED="$1"
       ;;
     *)
       echo "Unknown argument: $1" >&2
@@ -50,6 +55,10 @@ validate_count() {
 
 validate_count "Invoice" "$INVOICE_COUNT"
 validate_count "Payment" "$PAYMENT_COUNT"
+if ! [[ "$WEBAPI_ENABLED" =~ ^(true|false)$ ]]; then
+  echo "WebApiEnabled must be true or false (got: $WEBAPI_ENABLED)" >&2
+  exit 1
+fi
 
 HOST_ALIAS="host.docker.internal"
 HOST_GATEWAY="host-gateway"
@@ -125,6 +134,8 @@ start_webapi() {
     "$WEBAPI_IMAGE_NAME" >/dev/null
 }
 
-start_webapi
+if [ "$WEBAPI_ENABLED" = "true" ]; then
+  start_webapi
+fi
 
 echo "Done. Use 'docker ps' to view containers and 'docker logs -f <name>' to follow output."

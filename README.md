@@ -227,6 +227,10 @@ Each scenario has supporting tests:
    ./start-docker-instances.sh InvoiceCount 1 PaymentCount 2
    ```
    Requirements: the RabbitMQ container named `rabbitmq` must already be running and the `invoice-microservice`, `payment-microservice`, and `aspire-webapi` images must exist. The script (a) cleans up old invoice/payment containers, (b) launches the requested counts with the `host.docker.internal` gateway mapping, and (c) ensures the `aspire-net` bridge network exists so it can attach both `rabbitmq` and a single `aspire-webapi` container (bound to `http://localhost:5088/swagger`).
+   To disable the Web API container, pass `WebApiEnabled false`:
+   ```bash
+   ./start-docker-instances.sh InvoiceCount 1 PaymentCount 2 WebApiEnabled false
+   ```
 
 7. **Dockerized Web API**  
    Build from the `AppHost` directory (so the Dockerfile can locate shared projects):
