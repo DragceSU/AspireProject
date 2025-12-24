@@ -12,7 +12,9 @@ WEBAPI_CONTAINER_NAME="aspire-webapi"
 WEBAPI_IMAGE_NAME="aspire-webapi"
 WEBAPI_PORT=5088
 RABBITMQ_CONTAINER_NAME="rabbitmq"
-NETWORK_NAME="aspire-net"
+KAFKA_CONTAINER_NAME="kafka-kraft"
+RABBITMQ_NETWORK_NAME="aspire-net"
+KAFKA_NETWORK_NAME="aspireproject_kafka-net"
 
 usage() {
   cat <<USAGE
@@ -62,11 +64,17 @@ fi
 
 HOST_ALIAS="host.docker.internal"
 HOST_GATEWAY="host-gateway"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INVOICE_CONFIG_PATH="${SCRIPT_DIR}/AppHost/InvoiceMicroservice/appsettings.docker.json"
+PAYMENT_CONFIG_PATH="${SCRIPT_DIR}/AppHost/PaymentMicroservice/appsettings.docker.json"
 
 start_instances() {
   local base_name=$1
   local count=$2
   local image=$3
+  local primary_network=$4
+  local secondary_network=$5
+  local extra_args=${6:-}
 
   echo "Starting $count detached instance(s) of $image..."
 
@@ -84,24 +92,29 @@ start_instances() {
     echo "Starting $name (detached with TTY)..."
     docker run -itd --rm \
       --name "$name" \
+      --network "$primary_network" \
       --add-host="${HOST_ALIAS}:${HOST_GATEWAY}" \
+      $extra_args \
       "$image"
+
+    if [ -n "$secondary_network" ] && [ "$secondary_network" != "$primary_network" ]; then
+      docker network connect "$secondary_network" "$name" >/dev/null || true
+    fi
   done
 }
 
-start_instances "invoice-microservice" "$INVOICE_COUNT" "invoice-microservice"
-start_instances "payment-microservice" "$PAYMENT_COUNT" "payment-microservice"
-
 ensure_network() {
-  if ! docker network ls --format '{{.Name}}' | grep -qx "$NETWORK_NAME"; then
-    echo "Creating Docker network: $NETWORK_NAME"
-    docker network create "$NETWORK_NAME" >/dev/null
+  local network_name=$1
+  if ! docker network ls --format '{{.Name}}' | grep -qx "$network_name"; then
+    echo "Creating Docker network: $network_name"
+    docker network create "$network_name" >/dev/null
   fi
 }
 
 container_on_network() {
-  local container=$1
-  docker network inspect "$NETWORK_NAME" --format '{{range $id,$container := .Containers}}{{println $container.Name}}{{end}}' 2>/dev/null | grep -qx "$container"
+  local network_name=$1
+  local container=$2
+  docker network inspect "$network_name" --format '{{range $id,$container := .Containers}}{{println $container.Name}}{{end}}' 2>/dev/null | grep -qx "$container"
 }
 
 ensure_rabbit_ready() {
@@ -111,14 +124,35 @@ ensure_rabbit_ready() {
   fi
 }
 
+ensure_kafka_ready() {
+  if ! docker ps --format '{{.Names}}' | grep -qx "$KAFKA_CONTAINER_NAME"; then
+    echo "Kafka container '$KAFKA_CONTAINER_NAME' must be running before starting WebApi.Service." >&2
+    exit 1
+  fi
+}
+
+ensure_network "$RABBITMQ_NETWORK_NAME"
+ensure_network "$KAFKA_NETWORK_NAME"
+
+if ! container_on_network "$RABBITMQ_NETWORK_NAME" "$RABBITMQ_CONTAINER_NAME"; then
+  echo "Attaching $RABBITMQ_CONTAINER_NAME to $RABBITMQ_NETWORK_NAME..."
+  docker network connect "$RABBITMQ_NETWORK_NAME" "$RABBITMQ_CONTAINER_NAME" >/dev/null || true
+fi
+
+if ! container_on_network "$KAFKA_NETWORK_NAME" "$RABBITMQ_CONTAINER_NAME"; then
+  echo "Attaching $RABBITMQ_CONTAINER_NAME to $KAFKA_NETWORK_NAME..."
+  docker network connect "$KAFKA_NETWORK_NAME" "$RABBITMQ_CONTAINER_NAME" >/dev/null || true
+fi
+
+INVOICE_EXTRA_ARGS="-v ${INVOICE_CONFIG_PATH}:/app/appsettings.json:ro"
+PAYMENT_EXTRA_ARGS="-v ${PAYMENT_CONFIG_PATH}:/app/appsettings.json:ro"
+
+start_instances "invoice-microservice" "$INVOICE_COUNT" "invoice-microservice" "$RABBITMQ_NETWORK_NAME" "$KAFKA_NETWORK_NAME" "$INVOICE_EXTRA_ARGS"
+start_instances "payment-microservice" "$PAYMENT_COUNT" "payment-microservice" "$RABBITMQ_NETWORK_NAME" "$KAFKA_NETWORK_NAME" "$PAYMENT_EXTRA_ARGS"
+
 start_webapi() {
   ensure_rabbit_ready
-  ensure_network
-
-  if ! container_on_network "$RABBITMQ_CONTAINER_NAME"; then
-    echo "Attaching $RABBITMQ_CONTAINER_NAME to $NETWORK_NAME..."
-    docker network connect "$NETWORK_NAME" "$RABBITMQ_CONTAINER_NAME" >/dev/null || true
-  fi
+  ensure_kafka_ready
 
   if docker ps -a --format '{{.Names}}' | grep -qx "$WEBAPI_CONTAINER_NAME"; then
     echo "Stopping and removing existing container: $WEBAPI_CONTAINER_NAME"
@@ -128,10 +162,14 @@ start_webapi() {
   echo "Starting $WEBAPI_CONTAINER_NAME (detached, mapped to http://localhost:${WEBAPI_PORT})..."
   docker run -d --rm \
     --name "$WEBAPI_CONTAINER_NAME" \
-    --network "$NETWORK_NAME" \
-    -p "${WEBAPI_PORT}:8080" \
+    --network "$RABBITMQ_NETWORK_NAME" \
+    -p "${WEBAPI_PORT}:${WEBAPI_PORT}" \
     -e ASPNETCORE_ENVIRONMENT=Development \
     "$WEBAPI_IMAGE_NAME" >/dev/null
+
+  if [ "$KAFKA_NETWORK_NAME" != "$RABBITMQ_NETWORK_NAME" ]; then
+    docker network connect "$KAFKA_NETWORK_NAME" "$WEBAPI_CONTAINER_NAME" >/dev/null || true
+  fi
 }
 
 if [ "$WEBAPI_ENABLED" = "true" ]; then

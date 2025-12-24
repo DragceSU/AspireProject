@@ -32,7 +32,7 @@ builder.Services.AddMassTransit(x =>
         rider.UsingKafka((context, k) =>
         {
             var kafkaOptions = context.GetRequiredService<IOptions<AppConfiguration>>().Value.Kafka;
-            var bootstrapServers = string.IsNullOrWhiteSpace(kafkaOptions.BootstrapServers) ? "localhost:9092" : kafkaOptions.BootstrapServers;
+            var bootstrapServers = ResolveKafkaHost(kafkaOptions.BootstrapServers);
             k.Host(bootstrapServers);
         });
     });
@@ -74,6 +74,20 @@ static string ResolveRabbitHost(string? configuredHost)
             string.Equals(configuredHost, "host.docker.internal", StringComparison.OrdinalIgnoreCase))
         {
             hostName = "localhost";
+        }
+    }
+
+    return hostName;
+}
+static string ResolveKafkaHost(string? configuredHost)
+{
+    var hostName = string.IsNullOrWhiteSpace(configuredHost) ? "kafka-kraft:9092" : configuredHost;
+    if (!IsRunningInContainer())
+    {
+        if (string.IsNullOrWhiteSpace(configuredHost) ||
+            string.Equals(configuredHost, "kafka-kraft:9092", StringComparison.OrdinalIgnoreCase))
+        {
+            hostName = "localhost:29092";
         }
     }
 
