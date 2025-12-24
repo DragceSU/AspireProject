@@ -209,8 +209,7 @@ export default function Home() {
             Outfit your mission with <span>ready-to-go</span> essentials.
           </h1>
           <p>
-            Choose between a rugged trolley, a stealth e-bike, or a creator-grade laptop. Add them to your cart, confirm
-            the manifest, and dispatch the order in one swoop.
+            Pick your gear. Add to cart. Dispatch.
           </p>
           <div className="hero-actions">
             <div className="hero-pill">

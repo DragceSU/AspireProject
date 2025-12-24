@@ -226,7 +226,7 @@ Each scenario has supporting tests:
    ```bash
    ./start-docker-instances.sh InvoiceCount 1 PaymentCount 2
    ```
-   Requirements: the RabbitMQ container named `rabbitmq` must already be running and the `invoice-microservice`, `payment-microservice`, and `aspire-webapi` images must exist. The script (a) cleans up old invoice/payment containers, (b) launches the requested counts with the `host.docker.internal` gateway mapping, and (c) ensures the `aspire-net` bridge network exists so it can attach both `rabbitmq` and a single `aspire-webapi` container (bound to `http://localhost:5088/swagger`).
+   Requirements: the RabbitMQ container named `rabbitmq` and the Kafka container named `kafka-kraft` must already be running and the `invoice-microservice`, `payment-microservice`, and `aspire-webapi` images must exist. The script (a) cleans up old invoice/payment containers, (b) launches the requested counts with the `host.docker.internal` gateway mapping, (c) mounts `AppHost/InvoiceMicroservice/appsettings.docker.json` and `AppHost/PaymentMicroservice/appsettings.docker.json` so the containers use `rabbitmq` and `kafka-kraft` hostnames, and (d) ensures both `aspire-net` and `aspireproject_kafka-net` are used so the containers can reach RabbitMQ and Kafka.
    To disable the Web API container, pass `WebApiEnabled false`:
    ```bash
    ./start-docker-instances.sh InvoiceCount 1 PaymentCount 2 WebApiEnabled false
@@ -238,7 +238,7 @@ Each scenario has supporting tests:
    cd AppHost
    docker build -t aspire-webapi -f WebApi.Service/Dockerfile .
    ```
-   The API container needs to reach RabbitMQ via Docker DNS. Create a bridge network once, then attach both containers and run the API:
+   The API container needs to reach RabbitMQ via Docker DNS (and Kafka if using `/api/orders/kafka`). Create a bridge network once, then attach both containers and run the API:
    ```bash
    docker network create aspire-net                           # no-op if it already exists
    docker network connect aspire-net rabbitmq                # only needed the first time
@@ -248,13 +248,16 @@ Each scenario has supporting tests:
      -e ASPNETCORE_ENVIRONMENT=Development \
      aspire-webapi
    ```
-   `MassTransit` now resolves the broker at `rabbitmq:5672`, while the host accesses Swagger at `http://localhost:5088/swagger`. Use `docker logs aspire-webapi` to confirm `Bus started: rabbitmq://rabbitmq/`.
+   `MassTransit` now resolves the broker at `rabbitmq:5672`, while the host accesses Swagger at `http://localhost:5088/swagger`. Use `docker logs aspire-webapi` to confirm `Bus started: rabbitmq://rabbitmq/`. If you need Kafka from inside the container, attach it to the Kafka network as well:
+   ```bash
+   docker network connect aspireproject_kafka-net aspire-webapi
+   ```
 
 ## Configuration Notes
 
 - **Web API CORS**: `AppHost/WebApi.Service/appsettings.json` exposes `AllowedOrigins`. Override (or use user secrets/environment variables) to permit whichever hosts the storefront runs under (`http://localhost:3000` by default).
 - **Storefront API base URL**: The Next.js client reads `NEXT_PUBLIC_WEBAPI_BASE_URL`; fallback is `http://localhost:5088`. Update in `.env.local` when deploying elsewhere.
-- **Kafka integration**: `AppHost/WebApi.Service/appsettings.json` configures `Kafka:BootstrapServers` (defaults to `localhost:9092`). Kafka topics reuse the CLR type name (e.g., `OrderSubmission`) so new message types automatically map to their own topic. `TestConsumer` listens on `messagecontracts.messages.invoice.invoicecreated` with `BootstrapServers=localhost:29092` when running on the host.
+- **Kafka integration**: `AppHost/WebApi.Service/appsettings.json` configures `Kafka:BootstrapServers` (defaults to `localhost:9092`). Kafka topics reuse the CLR type name (e.g., `OrderSubmission`) so new message types automatically map to their own topic. When running in Docker, use `kafka-kraft:9092` (see `AppHost/*/appsettings.docker.json`). `TestConsumer` listens on `messagecontracts.messages.invoice.invoicecreated` with `BootstrapServers=localhost:29092` when running on the host.
 - **RabbitMQ bindings**: The order pipeline uses the `order-service` exchange with the `invoice-order-submission` queue (configurable in `AppHost/InvoiceMicroservice/appsettings.json`). The payment/invoice flow still relies on the existing `invoice-service` exchange.
 
 ## Testing
